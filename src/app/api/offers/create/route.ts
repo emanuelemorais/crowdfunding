@@ -1,17 +1,8 @@
 import { NextResponse } from 'next/server';
 import xrpl from 'xrpl';
-import fs from 'fs';
-import path from 'path';
+import { neon } from '@neondatabase/serverless';
 
-const STATE_PATH = path.join(process.cwd(), 'data', 'xrpl-poc.json');
-
-function loadState() {
-  const raw = fs.readFileSync(STATE_PATH, 'utf-8');
-  return JSON.parse(raw) as {
-    admin: { address: string };
-    investors: { name: string; address: string; secret: string }[];
-  };
-}
+// Uses Postgres to fetch investors; no local state file
 
 function toXRPLAmount(obj: { currency: string; value: string; issuer?: string }): string | { currency: string; value: string; issuer: string } {
   if (obj.currency === 'XRP') {
@@ -87,8 +78,9 @@ async function checkCanFundOffer(
 export async function POST(req: Request) {
   try {
     const { investorAddress, takerGets, takerPays } = await req.json();
-    const state = loadState();
-    const investor = state.investors.find(i => i.address === investorAddress);
+    const sql = neon(process.env.DATABASE_URL as string);
+    const rows = await sql`select name, address, secret from participants where role = 'investor' and address = ${investorAddress} limit 1` as any;
+    const investor = rows?.[0];
     if (!investor) return NextResponse.json({ error: 'investor_not_found' }, { status: 404 });
 
     const wallet = xrpl.Wallet.fromSeed(investor.secret);

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import xrpl from 'xrpl';
-import fs from 'fs';
-import path from 'path';
+import { neon } from '@neondatabase/serverless';
 
 async function getTrustLinesForIssuer(
   client: xrpl.Client,
@@ -27,17 +26,12 @@ export async function GET() {
   await client.connect();
 
   try {
-    const STATE_PATH = path.join(process.cwd(), 'data', 'xrpl-poc.json');
-    let issuerAddress = '';
-    let stateData = null;
-    try {
-      const raw = fs.readFileSync(STATE_PATH, 'utf-8');
-      const json = JSON.parse(raw);
-      issuerAddress = json?.admin?.address ?? '';
-      stateData = json;
-    } catch (_e) {}
+    const sql = neon(process.env.DATABASE_URL as string);
+    // Get issuer (admin) address from DB
+    const adminRows = await sql`select address from participants where role = 'admin' order by created_at asc limit 1` as any;
+    const issuerAddress = adminRows?.[0]?.address as string | undefined;
     if (!issuerAddress) {
-      return NextResponse.json({ error: 'admin.address not found in xrpl-poc.json' }, { status: 400 });
+      return NextResponse.json({ error: 'admin_not_found' }, { status: 400 });
     }
     
     const trustLines = await getTrustLinesForIssuer(client, issuerAddress);
@@ -60,6 +54,9 @@ export async function GET() {
     const uniqueAccounts = Array.from(new Set(trustLines.map(tl => tl.account)));
     const currencies = Object.keys(byCurrency);
 
+    // Get investors from DB
+    const investorsRows = await sql`select name, address from participants where role = 'investor' order by created_at asc` as any;
+
     return NextResponse.json({
       issuer: issuerAddress,
       summary: {
@@ -70,7 +67,7 @@ export async function GET() {
       },
       byCurrency,
       allTrustLines: trustLines,
-      investors: stateData?.investors || []
+      investors: investorsRows ?? []
     }, { status: 200 });
 
   } catch (e: any) {

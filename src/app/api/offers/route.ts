@@ -1,30 +1,26 @@
 import { NextResponse } from 'next/server';
 import xrpl from 'xrpl';
-import fs from 'fs';
-import path from 'path';
+import { neon } from '@neondatabase/serverless';
 
-const STATE_PATH = path.join(process.cwd(), 'data', 'xrpl-poc.json');
-
-function loadState() {
-  const raw = fs.readFileSync(STATE_PATH, 'utf-8');
-  return JSON.parse(raw) as {
-    admin: { address: string };
-    currencies: Array<string | { code: string; link: string }>;
-  };
-}
+// Uses Postgres to fetch admin issuer address; no local state file
 
 export async function POST(req: Request) {
   try {
     const { sell, buy, limit = 20 } = await req.json();
-    const state = loadState();
+    const sql = neon(process.env.DATABASE_URL as string);
+    const adminRows = await sql`select address from participants where role = 'admin' order by created_at asc limit 1` as any;
+    const issuerAddress = adminRows?.[0]?.address as string | undefined;
+    if (!issuerAddress) {
+      return NextResponse.json({ error: 'admin_not_found' }, { status: 400 });
+    }
     const client = new xrpl.Client('wss://s.altnet.rippletest.net:51233');
     await client.connect();
     try {
       const book = await client.request({
         command: 'book_offers',
         limit,
-        taker_gets: sell === 'XRP' ? { currency: 'XRP' } : { currency: sell, issuer: state.admin.address },
-        taker_pays: buy === 'XRP' ? { currency: 'XRP' } : { currency: buy, issuer: state.admin.address }
+        taker_gets: sell === 'XRP' ? { currency: 'XRP' } : { currency: sell, issuer: issuerAddress },
+        taker_pays: buy === 'XRP' ? { currency: 'XRP' } : { currency: buy, issuer: issuerAddress }
       } as any);
       return NextResponse.json(book.result);
     } finally {

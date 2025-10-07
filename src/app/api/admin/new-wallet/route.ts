@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
 import xrpl from 'xrpl';
-import fs from 'fs';
-import path from 'path';
+import { neon } from '@neondatabase/serverless';
 import { createFundedWallet, waitForAccountActivated, submitTx, sleep, setTrustLine } from '../../common/utils';
-
-const STATE_PATH = path.join(process.cwd(), 'data', 'xrpl-poc.json');
 
 export async function POST(req: Request) {
   try {
@@ -14,13 +11,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'name_required' }, { status: 400 });
     }
 
-    // Load current state
-    let state;
-    try {
-      const raw = fs.readFileSync(STATE_PATH, 'utf-8');
-      state = JSON.parse(raw);
-    } catch (e) {
-      return NextResponse.json({ error: 'state_not_found' }, { status: 404 });
+    const sql = neon(process.env.DATABASE_URL as string);
+    // Fetch admin participant to get issuer address and secret
+    const adminRows = await sql`select address, secret from participants where role = 'admin' order by created_at asc limit 1` as any;
+    const adminRow = adminRows?.[0];
+    if (!adminRow) {
+      return NextResponse.json({ error: 'admin_not_found' }, { status: 404 });
     }
 
     const client = new xrpl.Client('wss://s.altnet.rippletest.net:51233');
@@ -32,7 +28,7 @@ export async function POST(req: Request) {
       await waitForAccountActivated(client, newWallet.address);
 
       // Create admin wallet for trustlines
-      const adminWallet = xrpl.Wallet.fromSeed(state.admin.secret);
+      const adminWallet = xrpl.Wallet.fromSeed(String(adminRow.secret));
 
       // Create trustlines if specified
       if (trustlines && trustlines.length > 0) {
@@ -49,10 +45,7 @@ export async function POST(req: Request) {
         secret: newWallet.seed || ''
       };
 
-      state.investors.push(newInvestor);
-
-      // Save updated state
-      fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2), 'utf-8');
+      await sql`insert into participants (name, address, secret, role) values (${newInvestor.name}, ${newInvestor.address}, ${newInvestor.secret}, ${'investor'})`;
 
       return NextResponse.json({ 
         success: true, 

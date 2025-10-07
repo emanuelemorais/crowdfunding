@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import xrpl from 'xrpl';
-import { loadState } from '../common/utils';
+import { neon } from '@neondatabase/serverless';
 
 export async function POST(req: Request) {
   try {
@@ -17,16 +17,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'missing_parameters' }, { status: 400 });
     }
 
-    const state = loadState();
-    if (!state) return NextResponse.json({ error: 'state_not_found' }, { status: 404 });
-
-    // Look up wallet secret if not provided
+    // Look up wallet secret from DB if not provided
     if (!walletSecret) {
-      if (walletAddress === state.admin.address) {
-        walletSecret = state.admin.secret;
+      const sql = neon(process.env.DATABASE_URL as string);
+      const adminRows = await sql`select address, secret from participants where role = 'admin' order by created_at asc limit 1` as any;
+      const admin = adminRows?.[0];
+      if (admin && admin.address === walletAddress) {
+        walletSecret = admin.secret as string;
       } else {
-        const investor = state.investors.find(i => i.address === walletAddress);
-        if (investor) walletSecret = investor.secret;
+        const investorRows = await sql`select secret from participants where role = 'investor' and address = ${walletAddress} limit 1` as any;
+        const investor = investorRows?.[0];
+        if (investor) {
+          walletSecret = investor.secret as string;
+        }
       }
     }
     if (!walletSecret) {

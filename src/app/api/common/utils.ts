@@ -1,5 +1,4 @@
-import fs from 'fs';
-import path from 'path';
+import { neon } from '@neondatabase/serverless';
 import xrpl from 'xrpl';
 
 export type Investor = {
@@ -18,27 +17,23 @@ export type PocState = {
     distributed: boolean;
 };
 
-export const DATA_DIR = path.join(process.cwd(), 'data');
-export const STATE_PATH = path.join(DATA_DIR, 'xrpl-poc.json');
+export async function loadState(): Promise<PocState | null> {
+  const sql = neon(process.env.DATABASE_URL as string);
+  const adminRows = await sql`select address, secret from participants where role = 'admin' order by created_at asc limit 1` as any;
+  const admin = adminRows?.[0];
+  if (!admin) return null;
 
-export function loadState(): PocState | null {
-    try {
-      if (fs.existsSync(STATE_PATH)) {
-        const raw = fs.readFileSync(STATE_PATH, 'utf-8');
-        return JSON.parse(raw) as PocState;
-      }
-    } catch (_e) {}
-    return null;
-}
+  const investors = await sql`select name, address, secret from participants where role = 'investor' order by created_at asc` as any;
+  const currencies = await sql`select code, link from currencies order by code asc` as any;
 
-async function ensureDir(dir: string) {
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-}
-  
-  
-export function saveState(state: PocState) {
-    ensureDir(DATA_DIR);
-    fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2), 'utf-8');
+  const state: PocState = {
+    network: 'testnet',
+    admin: { address: admin.address, secret: admin.secret },
+    investors,
+    currencies,
+    distributed: true
+  };
+  return state;
 }
 
 export async function createFundedWallet(client: xrpl.Client) {

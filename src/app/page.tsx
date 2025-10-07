@@ -18,18 +18,21 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<string | null>(null);
   const [state, setState] = useState<PocState | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
   useEffect(() => {
     const p = localStorage.getItem("xrpl_poc_profile");
     if (p) setProfile(p);
     // tenta carregar estado salvo (admin/investidores) se já existir
     (async () => {
       try {
+        setLoading(true);
         const res = await fetch('/api/state');
         if (res.ok) {
           const data = await res.json();
           setState(data);
         }
       } catch (_) {}
+      finally { setLoading(false); }
     })();
   }, []);
 
@@ -47,6 +50,12 @@ export default function Home() {
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Crowdfund Dashboard</h1>
             <p className="text-gray-600">Selecione seu perfil para começar</p>
           </div>
+
+          {loading && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-gray-600 text-sm">
+              Carregando...
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-600 text-sm">

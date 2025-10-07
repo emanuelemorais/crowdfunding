@@ -6,7 +6,7 @@ export async function GET(req: Request) {
     const client = new xrpl.Client('wss://s.altnet.rippletest.net:51233');
     await client.connect();
 
-    const state = loadState();
+    const state = await loadState();
     if (!state) return NextResponse.json({ error: 'state_not_found' }, { status: 404 });
 
     const url = new URL(req.url);
