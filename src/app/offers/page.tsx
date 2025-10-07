@@ -420,7 +420,7 @@ export default function OffersPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-10">
+                  <TableCell colSpan={5} className="text-center py-10">
                     <div className="flex items-center justify-center gap-3 text-gray-600">
                       <ClipLoader color="#666" size={18} />
                       <span>Carregando ofertas...</span>
@@ -428,7 +428,7 @@ export default function OffersPage() {
                   </TableCell>
                 </TableRow>
               ) : ( (offers ?? []).length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-8">Nenhuma oferta</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-8">Nenhuma oferta</TableCell></TableRow>
               ) : (
                 offers!.map((o, idx) => {
                   function parseAmt(a: any): number {
