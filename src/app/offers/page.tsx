@@ -148,7 +148,6 @@ export default function OffersPage() {
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.details || data.error);
       setOffers(data.offers || []);
-      console.log("offers", data.offers);
       if (!priceInput) setPriceInput(bestPrice || "");
     } catch (e: any) {
       setError(e.message || "Falha ao carregar ofertas");
@@ -411,10 +410,11 @@ export default function OffersPage() {
           <Table className="w-full">
             <TableHeader className="bg-gray-100">
               <TableRow>
-                <TableHead className="text-center font-bold text-gray-600 w-1/4">Carteira</TableHead>
-                <TableHead className="text-center font-bold text-gray-600 w-1/4">Preço</TableHead>
-                <TableHead className="text-center font-bold text-gray-600 w-1/4">Limites</TableHead>
-                <TableHead className="text-center font-bold text-gray-600 w-1/4">Transação</TableHead>
+                <TableHead className="text-center font-bold text-gray-600 w-1/5">Carteira</TableHead>
+                <TableHead className="text-center font-bold text-gray-600 w-1/5">Buy ({buy})</TableHead>
+                <TableHead className="text-center font-bold text-gray-600 w-1/5">Sell ({sell})</TableHead>
+                <TableHead className="text-center font-bold text-gray-600 w-1/5">Price ({sell}/{buy})</TableHead>
+                <TableHead className="text-center font-bold text-gray-600 w-1/5">Transação</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -436,15 +436,18 @@ export default function OffersPage() {
                     return parseFloat(a.value);
                   }
             
-                  const paysBase = parseAmt(o.TakerPays); 
-                  const getsCounter = parseAmt(o.TakerGets);
-                  const price = paysBase === 0 ? 0 : getsCounter / paysBase; 
+                  const takerPays = parseAmt(o.TakerPays); 
+                  const takerGets = parseAmt(o.TakerGets); 
+                  const price = takerGets / takerPays;
                   return (
                     <TableRow key={idx} className="hover:bg-gray-50">
                       <TableCell className="text-center py-3">{o.Account.slice(0, 6)}…{o.Account.slice(-4)}</TableCell>
-                      <TableCell className="text-center py-3">{price.toLocaleString(undefined, { maximumFractionDigits: 8 })} {buy}</TableCell>
+                      <TableCell className="text-center py-3">{takerPays.toLocaleString(undefined, { maximumFractionDigits: 8 })} {buy}</TableCell>
                       <TableCell className="text-center py-3">
-                        {paysBase.toLocaleString()} {sell}
+                        {takerGets.toLocaleString()} {sell}
+                      </TableCell>
+                      <TableCell className="text-center py-3">
+                        {price.toLocaleString(undefined, { maximumFractionDigits: 8 })} {sell}/{buy}
                       </TableCell>
                       <TableCell className="text-center py-3">
                         <Link href={`https://testnet.xrpl.org/transactions/${o.PreviousTxnID}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-blue-600 transition-colors">
