@@ -390,10 +390,10 @@ export default function OffersPage() {
                 }} className="w-full" />
               </div>
 
-              <div className="w-full mt-8">
+              {/* <div className="w-full mt-8">
                 <label className="block text-xs text-gray-600 mb-1">Preço ({buy}/{sell})</label>
                 <Input readOnly id="price-input" placeholder="Preço" value={priceInput} onChange={(e) => setPriceInput(e.target.value)} className="w-full cursor-not-allowed text-gray-500 text-sm mb-1 font-semibold !bg-gray-100 focus:!bg-gray-100 focus:!ring-0 focus:!outline-none focus:!border-gray-300" />
-              </div>
+              </div> */}
 
               <div className="w-full">
                 <Button onClick={createOffer} disabled={loading || !state} className="w-full">{loading ? <ClipLoader color="#fff" size={16} /> : "Enviar oferta"}</Button>
