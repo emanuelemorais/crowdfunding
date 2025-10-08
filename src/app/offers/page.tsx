@@ -191,9 +191,9 @@ export default function OffersPage() {
         }
         throw new Error(data.details || data.error);
       }
-      if (data.result.meta.TransactionResult === 'tecNO_AUTH') {
+      if (data.result.meta.TransactionResult === 'tecNO_AUTH' || data.result.meta.TransactionResult === 'tecNO_LINE') {
         toast.error("Carteira sem autorização", {
-          description: "Não foi possível criar a oferta pois a carteira ainda não possui uma trustline para o ativo selecionado." 
+          description: "Não foi possível criar a oferta pois carteira não possui trustline para o ativo selecionado." 
         });
         return;
       }

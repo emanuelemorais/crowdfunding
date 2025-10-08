@@ -88,13 +88,6 @@ export async function POST(req: Request) {
     await client.connect();
 
     try {
-      // Ensure trustlines exist for both tokens (if not XRP)
-      if (typeof takerPays === 'object' && takerPays.currency !== 'XRP') {
-        await ensureTrustline(client, wallet, takerPays.currency, takerPays.issuer);
-      }
-      if (typeof takerGets === 'object' && takerGets.currency !== 'XRP') {
-        await ensureTrustline(client, wallet, takerGets.currency, takerGets.issuer);
-      }
       
       // Check balance before creating offer: ability to pay TakerPays
       try {
