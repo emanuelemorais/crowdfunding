@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import xrpl from 'xrpl';
 import { neon } from '@neondatabase/serverless';
+import { setTrustLine } from '../common/utils';
 
 export async function POST(req: Request) {
   try {
@@ -58,16 +59,18 @@ export async function POST(req: Request) {
         return NextResponse.json({ status: 'exists' }, { status: 200 });
       }
 
-      const tx: xrpl.TrustSet = {
-        TransactionType: 'TrustSet',
-        Account: wallet.address,
-        LimitAmount: { currency, issuer, value: limit }
-      };
-      const prepared = await client.autofill(tx);
-      const signed = wallet.sign(prepared);
-      const result = await client.submitAndWait(signed.tx_blob);
+      // Get issuer wallet from DB
+      const sql = neon(process.env.DATABASE_URL as string);
+      const issuerRows = await sql`select secret from participants where address = ${issuer} limit 1` as any;
+      const issuerSecret = issuerRows?.[0]?.secret;
+      if (!issuerSecret) {
+        return NextResponse.json({ error: 'issuer_not_found' }, { status: 400 });
+      }
+      const issuerWallet = xrpl.Wallet.fromSeed(issuerSecret);
 
-      return NextResponse.json({ result: result.result }, { status: 201 });
+      await setTrustLine(client, wallet, issuerWallet, currency, limit);
+
+      return NextResponse.json({ status: 'created' }, { status: 201 });
     } finally {
       client.disconnect();
     }
